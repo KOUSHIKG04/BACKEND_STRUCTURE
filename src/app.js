@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import "dotenv/config";
 
 const app = express();
 
@@ -31,6 +32,12 @@ app.use(cookieParser());
 
 // Routes
 import healthCheckRouter from "./routes/healthcheck.routes.js";
+import registerUserRouter from "./routes/users.routes.js";
 app.use("/api/v1/healthcheck", healthCheckRouter);
+app.use("/api/v1/user", registerUserRouter);
+
+// Error handler
+import {errorHandler} from "./middlewares/error.middleware.js"
+app.use(errorHandler)
 
 export { app };
