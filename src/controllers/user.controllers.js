@@ -2,8 +2,11 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
-// import bcrypt from "bcrypt"; 
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from "../utils/cloudinary.js";
+// import bcrypt from "bcrypt";
 
 export const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password, fullname } = req.body;
@@ -30,33 +33,71 @@ export const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, null, "User wih email or username already exists");
   }
 
-  const avatarLocalPath = req.file?.avatar[0]?.path;
+  // console.warn(req.files)
+  const avatarLocalPath = req.files?.avatar?.[0]?.path;
   if (!avatarLocalPath) {
     throw new ApiError(400, null, "Avatar file is missing");
   }
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  const coverLocalPath = req.files?.coverImage?.[0]?.path;
 
-  const coverImageLocalPath = req.file?.coverImage[0]?.path;
+  /** 
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = "";
   if (coverImageLocalPath) {
-    coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    coverImage = 
+    await uploadOnCloudinary(coverImageLocalPath);
+  } */
+
+  let avatar;
+  try {
+    avatar = await uploadOnCloudinary(avatarLocalPath);
+    console.log("uploaded avatar!", avatar);
+  } catch (error) {
+    console.log("error uploading avatar", error);
+    throw new ApiError(500, null, "Failed to upload avatar");
   }
 
-  await User.create({
-    fullname,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
-    email,
-    password,
-    username: username.toLowerCase(),
-  });
+  let coverImage;
+  try {
+    coverImage = await uploadOnCloudinary(coverLocalPath);
+    console.log("uploaded coverImage!", coverImage);
+  } catch (error) {
+    console.log("error uploading coverImage", error);
+    throw new ApiError(500, null, "Failed to upload coverImage");
+  }
 
-  const createdUser = await User.findById(user._id).select(
-    "-password - refreshToken",
-  );
+  let createdUser;
+  try {
+    const user = await User.create({
+      fullname,
+      avatar: avatar.url,
+      coverImage: coverImage?.url || "",
+      email,
+      password,
+      username: username.toLowerCase(),
+    });
 
-  if (!createdUser) {
-    throw new ApiError(500, null, "Something went wrong while registration");
+    createdUser = await User.findById(user._id).select(
+      "-password -refreshToken",
+    );
+
+    if (!createdUser) {
+      throw new ApiError(500, null, "Something went wrong while registration");
+    }
+  } catch (error) {
+    console.log("User creation failed....", error);
+    if (coverImage) {
+      await deleteFromCloudinary(coverImage.public_id);
+    }
+    if (avatar) {
+      await deleteFromCloudinary(avatar.public_id);
+    }
+
+    throw new ApiError(
+      500,
+      null,
+      "User registration failed, and resources were cleaned up.",
+    );
   }
 
   return res
