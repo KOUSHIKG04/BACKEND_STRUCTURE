@@ -23,6 +23,6 @@ userRouter.route("/register").post(
   registerUser,
 );
 
-userRouter.route("/logout"),post(verifyJWT, logoutUser)
+userRouter.route("/logout").post(verifyJWT, logoutUser)
 
 export default userRouter;
