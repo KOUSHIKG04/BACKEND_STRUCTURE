@@ -7,6 +7,7 @@ import {
 import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
+import mongoose from "mongoose";
 // import bcrypt from "bcrypt";
 
 export const generateAcessAndRefreshToken = async (userId) => {
@@ -186,7 +187,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .cookies("accessToken", accessToken, options).cookies("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options)
     .json(
       new ApiResponse(
         200,
@@ -232,7 +233,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .cookies("accessToken", accessToken, options).cookies("refreshToken", newRefreshToken, options)
+      .cookie("accessToken", accessToken, options).cookie("refreshToken", newRefreshToken, options)
       .json(
         new ApiResponse(
           200,
@@ -293,7 +294,7 @@ export const getCurrenrUser = asyncHandler(async (req,res) => {
     .json(new ApiResponse(200, req.user, "User Detailes"));
 })
 
-export const changeCurrenrPassword = asyncHandler(async (req,res) => {
+export const changeCurrentPassword = asyncHandler(async (req,res) => {
 
    const { oldPassword, newPassword } = req.body;
 
@@ -469,7 +470,7 @@ export const userChannelProfile = asyncHandler(async (req,res) => {
   ]);
 
  if (!channel?.length) {
-  throw new ApiError(404, nul, "Channel not found")
+  throw new ApiError(404, null, "Channel not found")
  }
 
   return res
@@ -478,12 +479,11 @@ export const userChannelProfile = asyncHandler(async (req,res) => {
       new ApiResponse(200, channel[0], "Channel poffile fetched successfully!")
     );
 
-
 })
 
 
 
-export const getWatchhis = asyncHandler(async (req,res) => {
+export const getWatchHistory = asyncHandler(async (req,res) => {
   const user = await User.aggregate([
     {
       $match:{
@@ -498,14 +498,14 @@ export const getWatchhis = asyncHandler(async (req,res) => {
         as: "watchHistory",
 
         // complex part
-        pipline:[
+        pipeline:[
           {
             $lookup:{
               from: "users",
               localField: "owner",
               foreignField: "_id",
               as: "owner",
-              pipline: [
+              pipeline: [
                 {
                   $project: {
                     fullname: 1,
@@ -519,7 +519,7 @@ export const getWatchhis = asyncHandler(async (req,res) => {
           {
             $addFields: {
               owner: {
-                $first: "owner"
+                $first: "$owner"
               }
             }
           }
@@ -528,14 +528,14 @@ export const getWatchhis = asyncHandler(async (req,res) => {
     },
   ])
 
-  if (!user) {
+  if (!user || !user.length) {
     throw new ApiError(404, nul, "User not found");
   }
   
   return res
     .status(200)
     .json(
-      new ApiResponse(200, user[0]?.watchHistory, "Channel poffile fetched successfully!"),
+      new ApiResponse(200, user[0]?.watchHistory, "Channel pofile fetched successfully!"),
     );
 
 })
